@@ -1,0 +1,122 @@
+options:
+	prefix: &8[&6&lSkills&8] &7
+	max-level: 100
+	base-xp: 100
+	multiplier: 1.5
+	
+	c-mining: &b
+	c-farming: &a
+	c-combat: &c
+
+	gui-filler: gray stained glass pane named " "
+	level-up-sound: entity.player.levelup
+	xp-gain-sound: entity.experience_orb.pickup
+
+function getLevel(p: offline player, skill: text) :: number:
+	if {skills::level::%uuid of {_p}%::%{_skill}%} is not set:
+		return 1
+	return {skills::level::%uuid of {_p}%::%{_skill}%}
+
+function getXP(p: offline player, skill: text) :: number:
+	if {skills::xp::%uuid of {_p}%::%{_skill}%} is not set:
+		return 0
+	return {skills::xp::%uuid of {_p}%::%{_skill}%}
+
+function getXPReq(level: number) :: number:
+	set {_req} to {@base-xp} * ({@multiplier} ^ ({_level} - 1))
+	return round({_req})
+
+function addXP(p: player, skill: text, amount: number):
+	set {_uuid} to uuid of {_p}
+	add {_amount} to {skills::xp::%{_uuid}%::%{_skill}%}
+	
+	set {_lvl} to getLevel({_p}, {_skill})
+	set {_req} to getXPReq({_lvl})
+	
+	set {_progress} to "&f+%{_amount}% %{_skill}% XP &8[&f%{skills::xp::%{_uuid}%::%{_skill}%}%&8/&f%{_req}%&8]"
+	send action bar {_progress} to {_p}
+	
+	if {skills::xp::%{_uuid}%::%{_skill}%} >= {_req}:
+		add 1 to {skills::level::%{_uuid}%::%{_skill}%}
+		set {skills::xp::%{_uuid}%::%{_skill}%} to 0
+		send "{@prefix} &e&lLEVEL UP! &7%{_skill}% &f%{_lvl}% &8➜ &f%{_lvl} + 1%" to {_p}
+		play sound "{@level-up-sound}" to {_p}
+		launch ball large coloured red, orange and yellow at {_p}'s location with duration 1
+
+on break:
+	if gamemode of player is survival:
+		if event-block is stone or cobblestone or deepslate:
+			addXP(player, "Mining", 1)
+		else if event-block is coal ore or iron ore or copper ore:
+			addXP(player, "Mining", 5)
+		else if event-block is gold ore or diamond ore or emerald ore:
+			addXP(player, "Mining", 15)
+
+		if getLevel(player, "Mining") >= 5:
+			if chance of 10%:
+				apply haste 2 to player for 5 seconds
+				send action bar "&b&l⚡ Haste Activated!" to player
+
+on break:
+	if gamemode of player is survival:
+		if event-block is wheat or carrots or potatoes:
+			if age of event-block is 7:
+				addXP(player, "Farming", 5)
+				
+				if getLevel(player, "Farming") >= 5:
+					wait 2 ticks
+					set event-block to event-block
+					send action bar "&a&l🌱 Replanted!" to player
+		else if event-block is melon or pumpkin:
+			addXP(player, "Farming", 3)
+
+on death:
+	if attacker is a player:
+		if victim is a monster:
+			addXP(attacker, "Combat", 10)
+			
+			if getLevel(attacker, "Combat") >= 5:
+				if chance of 20%:
+					heal attacker by 1 heart
+					send action bar "&c&l❤ Leech!" to attacker
+
+command /skills:
+	trigger:
+		set {_gui} to a new chest inventory with 3 rows named "&8Skills Profile"
+		set {_s} to 0
+		loop 27 times:
+			set slot {_s} of {_gui} to {@gui-filler}
+			add 1 to {_s}
+			
+		set {_lvlM} to getLevel(player, "Mining")
+		set {_xpM} to getXP(player, "Mining")
+		set {_reqM} to getXPReq({_lvlM})
+		set {_perkM} to "&cLocked"
+		if {_lvlM} >= 5:
+			set {_perkM} to "&aUnlocked"
+		
+		set slot 11 of {_gui} to diamond pickaxe named "{@c-mining}&lMining" with lore "" and "&7Level: &f%{_lvlM}%" and "&7XP: &f%{_xpM}%&8/&f%{_reqM}%" and "" and "&e&lPerk: Haste Aura" and "&7Chance to gain Haste II" and "&7Status: %{_perkM}%"
+		
+		set {_lvlF} to getLevel(player, "Farming")
+		set {_xpF} to getXP(player, "Farming")
+		set {_reqF} to getXPReq({_lvlF})
+		set {_perkF} to "&cLocked"
+		if {_lvlF} >= 5:
+			set {_perkF} to "&aUnlocked"
+			
+		set slot 13 of {_gui} to golden hoe named "{@c-farming}&lFarming" with lore "" and "&7Level: &f%{_lvlF}%" and "&7XP: &f%{_xpF}%&8/&f%{_reqF}%" and "" and "&e&lPerk: Green Thumb" and "&7Auto-replants crops" and "&7Status: %{_perkF}%"
+		
+		set {_lvlC} to getLevel(player, "Combat")
+		set {_xpC} to getXP(player, "Combat")
+		set {_reqC} to getXPReq({_lvlC})
+		set {_perkC} to "&cLocked"
+		if {_lvlC} >= 5:
+			set {_perkC} to "&aUnlocked"
+			
+		set slot 15 of {_gui} to diamond sword named "{@c-combat}&lCombat" with lore "" and "&7Level: &f%{_lvlC}%" and "&7XP: &f%{_xpC}%&8/&f%{_reqC}%" and "" and "&e&lPerk: Vampirism" and "&7Chance to heal on kill" and "&7Status: %{_perkC}%"
+
+		open {_gui} to player
+
+on inventory click:
+	if name of event-inventory is "&8Skills Profile":
+		cancel event
