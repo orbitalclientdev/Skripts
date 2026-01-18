@@ -1,0 +1,536 @@
+options:
+	max-homes: 3
+	vip-homes: 5
+	admin-homes: 10
+	request-timeout: 60
+	spawn-delay: 3
+	cancel-on-move: true
+
+command /fly [<player>]:
+	aliases: /flight
+	permission: fly.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "fly.others":
+				if arg-1's flight mode is true:
+					set arg-1's flight mode to false
+					send "&c&l✘ &7Flight &cdisabled &7for &f%arg-1%&7." to player
+					send "&c&l✘ &7Your flight has been &cdisabled &7by &f%player%&7." to arg-1
+				else:
+					set arg-1's flight mode to true
+					send "&a&l✔ &7Flight &aenabled &7for &f%arg-1%&7." to player
+					send "&a&l✔ &7Your flight has been &aenabled &7by &f%player%&7." to arg-1
+			else:
+				send "&cYou don't have permission to toggle flight for others." to player
+		else:
+			if player's flight mode is true:
+				set player's flight mode to false
+				send "&c&l✘ &7Flight &cdisabled&7." to player
+			else:
+				set player's flight mode to true
+				send "&a&l✔ &7Flight &aenabled&7." to player
+
+command /gmc [<player>]:
+	aliases: /gm1
+	permission: gamemode.creative
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "gamemode.others":
+				set arg-1's gamemode to creative
+				send "&6&l⚡ &7Set &f%arg-1%&7's gamemode to &6Creative&7." to player
+				send "&6&l⚡ &7Your gamemode was set to &6Creative &7by &f%player%&7." to arg-1
+			else:
+				send "&cYou don't have permission to change others' gamemode." to player
+		else:
+			set player's gamemode to creative
+			send "&6&l⚡ &7Gamemode set to &6Creative&7." to player
+
+command /gms [<player>]:
+	aliases: /gm0
+	permission: gamemode.survival
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "gamemode.others":
+				set arg-1's gamemode to survival
+				send "&a&l⚡ &7Set &f%arg-1%&7's gamemode to &aSurvival&7." to player
+				send "&a&l⚡ &7Your gamemode was set to &aSurvival &7by &f%player%&7." to arg-1
+			else:
+				send "&cYou don't have permission to change others' gamemode." to player
+		else:
+			set player's gamemode to survival
+			send "&a&l⚡ &7Gamemode set to &aSurvival&7." to player
+
+command /gma [<player>]:
+	aliases: /gm2
+	permission: gamemode.adventure
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "gamemode.others":
+				set arg-1's gamemode to adventure
+				send "&e&l⚡ &7Set &f%arg-1%&7's gamemode to &eAdventure&7." to player
+				send "&e&l⚡ &7Your gamemode was set to &eAdventure &7by &f%player%&7." to arg-1
+			else:
+				send "&cYou don't have permission to change others' gamemode." to player
+		else:
+			set player's gamemode to adventure
+			send "&e&l⚡ &7Gamemode set to &eAdventure&7." to player
+
+command /gmsp [<player>]:
+	aliases: /gm3, /spec
+	permission: gamemode.spectator
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "gamemode.others":
+				set arg-1's gamemode to spectator
+				send "&b&l⚡ &7Set &f%arg-1%&7's gamemode to &bSpectator&7." to player
+				send "&b&l⚡ &7Your gamemode was set to &bSpectator &7by &f%player%&7." to arg-1
+			else:
+				send "&cYou don't have permission to change others' gamemode." to player
+		else:
+			set player's gamemode to spectator
+			send "&b&l⚡ &7Gamemode set to &bSpectator&7." to player
+
+command /heal [<player>]:
+	permission: essentials.heal
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "essentials.heal.others":
+				heal arg-1
+				set arg-1's food level to 20
+				set arg-1's saturation to 20
+				send "&a&l❤ &7Healed &f%arg-1%&7." to player
+				send "&a&l❤ &7You were healed by &f%player%&7." to arg-1
+			else:
+				send "&cYou don't have permission to heal others." to player
+		else:
+			heal player
+			set player's food level to 20
+			set player's saturation to 20
+			send "&a&l❤ &7You have been healed." to player
+
+command /feed [<player>]:
+	permission: essentials.feed
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "essentials.feed.others":
+				set arg-1's food level to 20
+				set arg-1's saturation to 20
+				send "&6&l🍖 &7Fed &f%arg-1%&7." to player
+				send "&6&l🍖 &7You were fed by &f%player%&7." to arg-1
+			else:
+				send "&cYou don't have permission to feed others." to player
+		else:
+			set player's food level to 20
+			set player's saturation to 20
+			send "&6&l🍖 &7You have been fed." to player
+
+command /clear [<player>]:
+	aliases: /ci, /clearinv
+	permission: essentials.clear
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "essentials.clear.others":
+				clear arg-1's inventory
+				send "&c&l🗑 &7Cleared &f%arg-1%&7's inventory." to player
+				send "&c&l🗑 &7Your inventory was cleared by &f%player%&7." to arg-1
+			else:
+				send "&cYou don't have permission to clear others' inventory." to player
+		else:
+			clear player's inventory
+			send "&c&l🗑 &7Your inventory has been cleared." to player
+
+command /god [<player>]:
+	permission: essentials.god
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "essentials.god.others":
+				if {god::%uuid of arg-1%} is set:
+					delete {god::%uuid of arg-1%}
+					send "&c&l✘ &7God mode &cdisabled &7for &f%arg-1%&7." to player
+					send "&c&l✘ &7God mode &cdisabled&7." to arg-1
+				else:
+					set {god::%uuid of arg-1%} to true
+					send "&a&l✔ &7God mode &aenabled &7for &f%arg-1%&7." to player
+					send "&a&l✔ &7God mode &aenabled&7." to arg-1
+			else:
+				send "&cYou don't have permission to toggle god mode for others." to player
+		else:
+			if {god::%uuid of player%} is set:
+				delete {god::%uuid of player%}
+				send "&c&l✘ &7God mode &cdisabled&7." to player
+			else:
+				set {god::%uuid of player%} to true
+				send "&a&l✔ &7God mode &aenabled&7." to player
+
+on damage of player:
+	{god::%uuid of victim%} is set
+	cancel event
+
+command /broadcast <text>:
+	aliases: /bc, /announce
+	permission: essentials.broadcast
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		broadcast "&8[&c&lBroadcast&8] &f%arg-1%"
+
+command /sudo <player> <text>:
+	permission: essentials.sudo
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-2 starts with "/":
+			make arg-1 execute command arg-2
+		else:
+			make arg-1 say arg-2
+		send "&7&oForced &f%arg-1% &7&oto: &f%arg-2%" to player
+
+command /vanish [<player>]:
+	aliases: /v, /hide
+	permission: vanish.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "vanish.others":
+				if {vanish::%uuid of arg-1%} is set:
+					delete {vanish::%uuid of arg-1%}
+					reveal arg-1 to all players
+					send "&a&l👁 &f%arg-1% &7is now &avisible&7." to player
+					send "&a&l👁 &7You are now &avisible&7." to arg-1
+				else:
+					set {vanish::%uuid of arg-1%} to true
+					hide arg-1 from all players
+					loop all players:
+						if loop-player has permission "vanish.see":
+							reveal arg-1 to loop-player
+					send "&7&l👻 &f%arg-1% &7is now &7invisible&7." to player
+					send "&7&l👻 &7You are now &7invisible&7." to arg-1
+			else:
+				send "&cYou don't have permission to vanish others." to player
+		else:
+			if {vanish::%uuid of player%} is set:
+				delete {vanish::%uuid of player%}
+				reveal player to all players
+				send "&a&l👁 &7You are now &avisible&7." to player
+			else:
+				set {vanish::%uuid of player%} to true
+				hide player from all players
+				loop all players:
+					if loop-player has permission "vanish.see":
+						reveal player to loop-player
+				send "&7&l👻 &7You are now &7invisible&7." to player
+
+command /speed <number> [<text>]:
+	permission: speed.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 < 0:
+			send "&cSpeed must be between 0 and 10." to player
+			stop
+		if arg-1 > 10:
+			send "&cSpeed must be between 0 and 10." to player
+			stop
+		set {_speed} to arg-1 / 10
+		if arg-2 is "fly" or "f":
+			set player's flight speed to {_speed}
+			send "&b&l💨 &7Flight speed set to &b%arg-1%&7." to player
+		else if arg-2 is "walk" or "w":
+			set player's walk speed to {_speed}
+			send "&a&l💨 &7Walk speed set to &a%arg-1%&7." to player
+		else:
+			if player's flight mode is true:
+				set player's flight speed to {_speed}
+				send "&b&l💨 &7Flight speed set to &b%arg-1%&7." to player
+			else:
+				set player's walk speed to {_speed}
+				send "&a&l💨 &7Walk speed set to &a%arg-1%&7." to player
+
+command /speedreset:
+	permission: speed.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		set player's flight speed to 0.1
+		set player's walk speed to 0.2
+		send "&e&l💨 &7Speed reset to default." to player
+
+on tab complete of "/speed":
+	set tab completions for position 1 to "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "reset"
+	set tab completions for position 2 to "fly", "walk"
+
+command /sethome [<text>]:
+	permission: homes.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		set {_name} to arg-1 ? "home"
+		set {_count} to 0
+		loop {homes::%uuid of player%::*}:
+			add 1 to {_count}
+		set {_max} to {@max-homes}
+		if player has permission "homes.vip":
+			set {_max} to {@vip-homes}
+		if player has permission "homes.admin":
+			set {_max} to {@admin-homes}
+		if {homes::%uuid of player%::%{_name}%} is not set:
+			if {_count} >= {_max}:
+				send "&c&l✘ &7You have reached your home limit &8(&c%{_max}%&8)&7." to player
+				stop
+		set {homes::%uuid of player%::%{_name}%} to player's location
+		send "&a&l🏠 &7Home &a%{_name}% &7has been set." to player
+
+command /home [<text>]:
+	permission: homes.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		set {_name} to arg-1 ? "home"
+		if {homes::%uuid of player%::%{_name}%} is set:
+			teleport player to {homes::%uuid of player%::%{_name}%}
+			send "&a&l🏠 &7Teleported to &a%{_name}%&7." to player
+		else:
+			send "&c&l✘ &7Home &c%{_name}% &7does not exist." to player
+
+command /delhome <text>:
+	permission: homes.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if {homes::%uuid of player%::%arg-1%} is set:
+			delete {homes::%uuid of player%::%arg-1%}
+			send "&c&l🏠 &7Home &c%arg-1% &7has been deleted." to player
+		else:
+			send "&c&l✘ &7Home &c%arg-1% &7does not exist." to player
+
+command /homes:
+	aliases: /listhomes
+	permission: homes.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if size of {homes::%uuid of player%::*} = 0:
+			send "&7You have no homes set. Use &e/sethome <name>&7." to player
+			stop
+		send "&6&l🏠 Your Homes:" to player
+		loop {homes::%uuid of player%::*}:
+			send "&8 • &e%loop-index%" to player
+
+on tab complete of "/home":
+	set {_homes::*} to indices of {homes::%uuid of player%::*}
+	set tab completions for position 1 to {_homes::*}
+
+on tab complete of "/delhome":
+	set {_homes::*} to indices of {homes::%uuid of player%::*}
+	set tab completions for position 1 to {_homes::*}
+
+command /tpa <player>:
+	permission: tpa.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 = player:
+			send "&cYou cannot send a teleport request to yourself." to player
+			stop
+		if {tpa::%uuid of arg-1%::from} is set:
+			send "&cThat player already has a pending request." to player
+			stop
+		set {tpa::%uuid of arg-1%::from} to player
+		set {tpa::%uuid of arg-1%::type} to "tpa"
+		send "&a&l➤ &7Teleport request sent to &f%arg-1%&7." to player
+		send "" to arg-1
+		send "&a&l➤ &f%player% &7wants to teleport to you." to arg-1
+		send "&8  Type &a/tpaccept &8to accept or &c/tpdeny &8to deny." to arg-1
+		send "" to arg-1
+		wait {@request-timeout} seconds
+		if {tpa::%uuid of arg-1%::from} = player:
+			delete {tpa::%uuid of arg-1%::*}
+			send "&7&oYour teleport request to &f%arg-1% &7&ohas expired." to player
+
+command /tpahere <player>:
+	permission: tpa.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 = player:
+			send "&cYou cannot send a teleport request to yourself." to player
+			stop
+		if {tpa::%uuid of arg-1%::from} is set:
+			send "&cThat player already has a pending request." to player
+			stop
+		set {tpa::%uuid of arg-1%::from} to player
+		set {tpa::%uuid of arg-1%::type} to "tpahere"
+		send "&a&l➤ &7Teleport request sent to &f%arg-1%&7." to player
+		send "" to arg-1
+		send "&a&l➤ &f%player% &7wants you to teleport to them." to arg-1
+		send "&8  Type &a/tpaccept &8to accept or &c/tpdeny &8to deny." to arg-1
+		send "" to arg-1
+		wait {@request-timeout} seconds
+		if {tpa::%uuid of arg-1%::from} = player:
+			delete {tpa::%uuid of arg-1%::*}
+			send "&7&oYour teleport request to &f%arg-1% &7&ohas expired." to player
+
+command /tpaccept:
+	aliases: /tpyes
+	permission: tpa.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if {tpa::%uuid of player%::from} is not set:
+			send "&cYou have no pending teleport requests." to player
+			stop
+		set {_requester} to {tpa::%uuid of player%::from}
+		set {_type} to {tpa::%uuid of player%::type}
+		delete {tpa::%uuid of player%::*}
+		if {_type} = "tpa":
+			teleport {_requester} to player
+			send "&a&l✔ &7Teleported &f%{_requester}% &7to you." to player
+			send "&a&l✔ &7Teleported to &f%player%&7." to {_requester}
+		else:
+			teleport player to {_requester}
+			send "&a&l✔ &7Teleported to &f%{_requester}%&7." to player
+			send "&a&l✔ &f%player% &7teleported to you." to {_requester}
+
+command /tpdeny:
+	aliases: /tpno
+	permission: tpa.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if {tpa::%uuid of player%::from} is not set:
+			send "&cYou have no pending teleport requests." to player
+			stop
+		set {_requester} to {tpa::%uuid of player%::from}
+		delete {tpa::%uuid of player%::*}
+		send "&c&l✘ &7Teleport request denied." to player
+		send "&c&l✘ &f%player% &7denied your teleport request." to {_requester}
+
+command /tpcancel:
+	permission: tpa.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		set {_cancelled} to false
+		loop all players:
+			if {tpa::%uuid of loop-player%::from} = player:
+				delete {tpa::%uuid of loop-player%::*}
+				set {_cancelled} to true
+				send "&7&oTeleport request from &f%player% &7&owas cancelled." to loop-player
+		if {_cancelled} is true:
+			send "&e&l✘ &7Teleport request cancelled." to player
+		else:
+			send "&cYou have no outgoing teleport requests." to player
+
+command /setspawn:
+	permission: spawn.set
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		set {spawn} to player's location
+		send "&a&l✔ &7Spawn point has been set." to player
+
+command /spawn:
+	permission: spawn.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if {spawn} is not set:
+			send "&cSpawn has not been set yet." to player
+			stop
+		if player has permission "spawn.instant":
+			teleport player to {spawn}
+			send "&a&l⚡ &7Teleported to spawn." to player
+			stop
+		if {@spawn-delay} > 0:
+			set {spawn-warmup::%uuid of player%} to player's location
+			send "&e&l⏳ &7Teleporting to spawn in &e{@spawn-delay} &7seconds... Don't move!" to player
+			wait {@spawn-delay} seconds
+			if {@cancel-on-move} is true:
+				if {spawn-warmup::%uuid of player%} is set:
+					set {_old} to {spawn-warmup::%uuid of player%}
+					if distance between player's location and {_old} > 0.5:
+						delete {spawn-warmup::%uuid of player%}
+						send "&c&l✘ &7Teleport cancelled. You moved!" to player
+						stop
+			delete {spawn-warmup::%uuid of player%}
+		teleport player to {spawn}
+		send "&a&l⚡ &7Teleported to spawn." to player
+
+command /delspawn:
+	permission: spawn.set
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if {spawn} is set:
+			delete {spawn}
+			send "&c&l✔ &7Spawn point has been deleted." to player
+		else:
+			send "&cNo spawn point is set." to player
+
+command /back:
+	permission: back.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if {back::%uuid of player%} is not set:
+			send "&cYou have no previous location to return to." to player
+			stop
+		set {_loc} to {back::%uuid of player%}
+		set {back::%uuid of player%} to player's location
+		teleport player to {_loc}
+		send "&a&l↩ &7Returned to your previous location." to player
+
+command /invsee <player>:
+	aliases: /inv, /openinv
+	permission: invsee.use
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 = player:
+			send "&cYou cannot view your own inventory this way." to player
+			stop
+		open arg-1's inventory to player
+		send "&a&l👁 &7Viewing &f%arg-1%&7's inventory." to player
+
+command /armoursee <player>:
+	aliases: /armsee, /armor
+	permission: invsee.armor
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		send "&6&l🛡 &f%arg-1%&7's Armor:" to player
+		send "&8  Helmet: &f%arg-1's helmet%"
+		send "&8  Chestplate: &f%arg-1's chestplate%"
+		send "&8  Leggings: &f%arg-1's leggings%"
+		send "&8  Boots: &f%arg-1's boots%"
+		send "&8  Off-hand: &f%arg-1's offhand item%"
+
+on tab complete of "/invsee":
+	set tab completions for position 1 to all players
+
+on tab complete of "/armoursee":
+	set tab completions for position 1 to all players
+
+on join:
+	wait 1 tick
+	loop all players:
+		if {vanish::%uuid of loop-player%} is set:
+			if player doesn't have permission "vanish.see":
+				hide loop-player from player
+	if {vanish::%uuid of player%} is set:
+		hide player from all players
+		loop all players:
+			if loop-player has permission "vanish.see":
+				reveal player to loop-player
+		send "&7&l👻 &7You are still vanished." to player
+	if {spawn} is set:
+		if player has not played before:
+			teleport player to {spawn}
+
+on quit:
+	if {vanish::%uuid of player%} is set:
+		reveal player to all players
+	delete {tpa::%uuid of player%::*}
+
+on death of player:
+	set {back::%uuid of victim%} to victim's location
+
+on teleport:
+	if teleport cause is not ender pearl:
+		if teleport cause is not unknown:
+			set {back::%uuid of player%} to player's location
+
+on damage of player:
+	if {spawn-warmup::%uuid of victim%} is set:
+		delete {spawn-warmup::%uuid of victim%}
+		send "&c&l✘ &7Teleport cancelled. You took damage!" to victim

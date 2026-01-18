@@ -1,0 +1,38 @@
+command /afk [<text>]:
+	trigger:
+		if {afk::%uuid of player%} is set:
+			delete {afk::%uuid of player%}
+			broadcast "&e%player% is no longer AFK."
+			set player's tab list name to "%player%"
+			execute console command "tab player %player% tabsuffix &r"
+			execute console command "tab player %player% tagsuffix &r"
+		else:
+			set {afk::%uuid of player%} to true
+			if arg-1 is set:
+				broadcast "&e%player% is now AFK: &7%arg-1%"
+			else:
+				broadcast "&e%player% is now AFK."
+			set player's tab list name to "&7%player% &8[AFK]"
+			execute console command "tab player %player% tabsuffix &8 [AFK]"
+			execute console command "tab player %player% tagsuffix &8 [AFK]"
+
+on player move:
+	{afk::%uuid of player%} is set
+	delete {afk::%uuid of player%}
+	broadcast "&e%player% is no longer AFK."
+	set player's tab list name to "%player%"
+	execute console command "tab player %player% tabsuffix &r"
+	execute console command "tab player %player% tagsuffix &r"
+
+on chat:
+	{afk::%uuid of player%} is set
+	delete {afk::%uuid of player%}
+	broadcast "&e%player% is no longer AFK."
+	set player's tab list name to "%player%"
+	execute console command "tab player %player% tabsuffix &r"
+	execute console command "tab player %player% tagsuffix &r"
+
+on quit:
+	delete {afk::%uuid of player%}
+	execute console command "tab player %player% tabsuffix &r"
+	execute console command "tab player %player% tagsuffix &r"

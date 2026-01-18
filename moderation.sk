@@ -1,0 +1,340 @@
+options:
+	# -----------------------------------------------------
+	# CONFIGURATION
+	# -----------------------------------------------------
+	prefix: &8[&c&lGuard&8] &7
+	sc-prefix: &8[&b&lStaff&8] &f
+	
+	# Permissions
+	perm-admin: moderation.admin    # Full access
+	perm-mod: moderation.mod        # Ban/Mute/Warn
+	perm-helper: moderation.helper  # Warn/Kick/Mute(Temp)
+	
+	# Settings
+	appeal-url: discord.gg/example
+	gui-filler: gray stained glass pane named " "
+	
+	# Colors
+	c-error: &c
+	c-success: &a
+	c-info: &7
+	c-highlight: &e
+
+# -----------------------------------------------------
+# UTILITIES & FUNCTIONS
+# -----------------------------------------------------
+function formatTime(s: timespan) :: text:
+	set {_t} to "%{_s}%"
+	replace all " seconds" and " second" with "s" in {_t}
+	replace all " minutes" and " minute" with "m" in {_t}
+	replace all " hours" and " hour" with "h" in {_t}
+	replace all " days" and " day" with "d" in {_t}
+	return {_t}
+
+function logHistory(p: offline player, type: text, reason: text, executor: player):
+	add 1 to {history::count::%uuid of {_p}%}
+	set {_id} to {history::count::%uuid of {_p}%}
+	set {history::entry::%uuid of {_p}%::%{_id}%} to "%{_type}%|%uuid of {_executor}%|%{_reason}%|%now%"
+
+function broadcastPunishment(type: text, target: offline player, executor: player, reason: text, duration: text=""):
+	if {_duration} is not "":
+		set {_msg} to "&c&l%{_type}% &8» &f%{_target}% &7by &f%{_executor}% &7for &f%{_duration}%"
+	else:
+		set {_msg} to "&c&l%{_type}% &8» &f%{_target}% &7by &f%{_executor}%"
+	
+	loop all players:
+		if loop-player has permission "{@perm-helper}":
+			send "" to loop-player
+			send "{@prefix} %{_msg}%" to loop-player
+			send "{@prefix} &7Reason: &f%{_reason}%" to loop-player
+			send "" to loop-player
+
+# -----------------------------------------------------
+# STAFF UTILITIES
+# -----------------------------------------------------
+command /sc <text>:
+	aliases: /staffchat
+	permission: {@perm-helper}
+	trigger:
+		loop all players:
+			if loop-player has permission "{@perm-helper}":
+				send "{@sc-prefix} %player%: &f%arg-1%" to loop-player
+
+command /chat <text> [<text>]:
+	permission: {@perm-mod}
+	trigger:
+		if arg-1 is "clear" or "c":
+			loop 100 times:
+				broadcast ""
+			broadcast "{@prefix} &7Chat has been cleared by &f%player%&7."
+		
+		else if arg-1 is "mute" or "lock":
+			if {chat::muted} is not set:
+				set {chat::muted} to true
+				broadcast "{@prefix} &7Chat has been &clocked &7by &f%player%&7."
+			else:
+				delete {chat::muted}
+				broadcast "{@prefix} &7Chat has been &aunlocked &7by &f%player%&7."
+				
+		else if arg-1 is "slow":
+			if arg-2 is set:
+				set {_s} to arg-2 parsed as number
+				set {chat::slow} to {_s}
+				broadcast "{@prefix} &7Chat slow mode set to &f%{_s}%s &7by &f%player%&7."
+			else:
+				delete {chat::slow}
+				broadcast "{@prefix} &7Chat slow mode &adisabled &7by &f%player%&7."
+		else:
+			send "{@prefix} &cUsage: /chat <clear|mute|slow [seconds]>"
+
+on chat:
+	if player does not have permission "{@perm-helper}":
+		if {chat::muted} is set:
+			cancel event
+			send "{@prefix} &cChat is currently locked."
+			stop
+			
+		if {chat::slow} is set:
+			set {_waited} to difference between {chat::last::%uuid of player%} and now
+			if {_waited} < "%{chat::slow}% seconds" parsed as timespan:
+				cancel event
+				send "{@prefix} &cChat is slowed. Please wait."
+				stop
+			set {chat::last::%uuid of player%} to now
+
+# -----------------------------------------------------
+# FREEZE SYSTEM
+# -----------------------------------------------------
+command /freeze <player>:
+	aliases: /ss
+	permission: {@perm-helper}
+	trigger:
+		if {frozen::%uuid of arg-1%} is set:
+			delete {frozen::%uuid of arg-1%}
+			send "{@prefix} &aUnfrozen &f%arg-1%&7."
+			send "{@prefix} &aYou have been unfrozen." to arg-1
+			reset title of arg-1
+		else:
+			set {frozen::%uuid of arg-1%} to true
+			send "{@prefix} &bFrozen &f%arg-1%&7."
+			send title "&b&lFROZEN" with subtitle "&7Join the Discord for support!" to arg-1 for 999 days
+
+on player move:
+	if {frozen::%uuid of player%} is set:
+		cancel event
+		
+on command:
+	if {frozen::%uuid of player%} is set:
+		if command is not "msg" or "r":
+			cancel event
+			send "{@prefix} &cYou cannot use commands while frozen."
+
+# -----------------------------------------------------
+# PUNISHMENT SYSTEM
+# -----------------------------------------------------
+# ... (intermediate code omitted for brevity in thought process, but handled by tool) ...
+# Actually, I need to do these as separate replacement chunks or use multi_replace.
+# Since replace_file_content is single block, I will use multi_replace_file_content for the remaining edits as they are scattered.
+
+
+# -----------------------------------------------------
+# PUNISHMENT SYSTEM
+# -----------------------------------------------------
+
+# WARN
+command /warn <player> <text>:
+	permission: {@perm-helper}
+	trigger:
+		logHistory(arg-1, "WARN", arg-2, player)
+		broadcastPunishment("WARN", arg-1, player, arg-2)
+		send "" to arg-1
+		send "&c&l⚠ YOU HAVE BEEN WARNED" to arg-1
+		send "&7Reason: &f%arg-2%" to arg-1
+		send "" to arg-1
+		play sound "block.note_block.bass" to arg-1
+
+# KICK
+command /kick <player> <text>:
+	permission: {@perm-helper}
+	trigger:
+		logHistory(arg-1, "KICK", arg-2, player)
+		broadcastPunishment("KICK", arg-1, player, arg-2)
+		kick arg-1 due to "&c&lKICKED%nl%%nl%&7Reason: &f%arg-2%%nl%&7Executor: &f%player%"
+
+# MUTE
+command /mute <offline player> <text>:
+	permission: {@perm-helper}
+	trigger:
+		if {mute::%uuid of arg-1%} is set:
+			send "{@prefix} &cPlayer is already muted."
+			stop
+		set {mute::%uuid of arg-1%} to true
+		set {mute::reason::%uuid of arg-1%} to arg-2
+		logHistory(arg-1, "MUTE", arg-2, player)
+		broadcastPunishment("MUTE", arg-1, player, arg-2, "Permanent")
+
+command /tempmute <offline player> <timespan> <text>:
+	permission: {@perm-helper}
+	trigger:
+		set {mute::%uuid of arg-1%} to now
+		add arg-2 to {mute::%uuid of arg-1%} # Expiry date
+		set {mute::reason::%uuid of arg-1%} to arg-3
+		logHistory(arg-1, "TEMPMUTE", arg-3, player)
+		broadcastPunishment("TEMPMUTE", arg-1, player, arg-3, formatTime(arg-2))
+
+command /unmute <offline player>:
+	permission: {@perm-helper}
+	trigger:
+		if {mute::%uuid of arg-1%} is not set:
+			send "{@prefix} &cPlayer is not muted."
+			stop
+		delete {mute::%uuid of arg-1%}
+		delete {mute::reason::%uuid of arg-1%}
+		send "{@prefix} &aUnmuted &f%arg-1%&7."
+
+on chat:
+	if {mute::%uuid of player%} is set:
+		if {mute::%uuid of player%} is true: # Perm mute
+			cancel event
+			send "&c&l✘ &7You are permanently muted for: &f%{mute::reason::%uuid of player%}%"
+		else if {mute::%uuid of player%} > now: # Temp mute
+			cancel event
+			set {_remain} to difference between now and {mute::%uuid of player%}
+			send "&c&l✘ &7You are temporarily muted for: &f%{mute::reason::%uuid of player%}%"
+			send "&7Time remaining: &f%formatTime({_remain})%"
+		else:
+			delete {mute::%uuid of player%}
+			delete {mute::reason::%uuid of player%}
+
+# BAN
+command /ban <offline player> <text>:
+	permission: {@perm-mod}
+	trigger:
+		if {ban::%uuid of arg-1%} is set:
+			send "{@prefix} &cPlayer is already banned."
+			stop
+		set {ban::%uuid of arg-1%} to true
+		set {ban::reason::%uuid of arg-1%} to arg-2
+		logHistory(arg-1, "BAN", arg-2, player)
+		broadcastPunishment("BAN", arg-1, player, arg-2, "Permanent")
+		kick arg-1 due to "&c&lPERMANENTLY BANNED%nl%%nl%&7Reason: &f%arg-2%%nl%&7Appeal: &f{@appeal-url}"
+
+command /tempban <offline player> <timespan> <text>:
+	permission: {@perm-mod}
+	trigger:
+		set {ban::%uuid of arg-1%} to now
+		add arg-2 to {ban::%uuid of arg-1%}
+		set {ban::reason::%uuid of arg-1%} to arg-3
+		logHistory(arg-1, "TEMPBAN", arg-3, player)
+		broadcastPunishment("TEMPBAN", arg-1, player, arg-3, formatTime(arg-2))
+		kick arg-1 due to "&c&lTEMPORARILY BANNED%nl%%nl%&7Reason: &f%arg-3%%nl%&7Expires in: &f%formatTime(arg-2)%"
+
+command /unban <offline player>:
+	permission: {@perm-mod}
+	trigger:
+		if {ban::%uuid of arg-1%} is not set:
+			send "{@prefix} &cPlayer is not banned."
+			stop
+		delete {ban::%uuid of arg-1%}
+		delete {ban::reason::%uuid of arg-1%}
+		send "{@prefix} &aUnbanned &f%arg-1%&7."
+
+on connect:
+	if {ban::%uuid of player%} is set:
+		if {ban::%uuid of player%} is true:
+			kick player due to "&c&lPERMANENTLY BANNED%nl%%nl%&7Reason: &f%{ban::reason::%uuid of player%}% %nl%&7Appeal: &f{@appeal-url}"
+		else if {ban::%uuid of player%} > now:
+			set {_remain} to difference between now and {ban::%uuid of player%}
+			kick player due to "&c&lTEMPORARILY BANNED%nl%%nl%&7Reason: &f%{ban::reason::%uuid of player%}% %nl%&7Expires in: &f%formatTime({_remain})%"
+		else:
+			delete {ban::%uuid of player%}
+			delete {ban::reason::%uuid of player%}
+
+# -----------------------------------------------------
+# GUI SYSTEM
+# -----------------------------------------------------
+command /punish <patient:player>:
+	permission: {@perm-helper}
+	trigger:
+		set {_gui} to a new chest inventory with 3 rows named "&8Punish: &c%arg-1%"
+		set {_s} to 0
+		loop 27 times:
+			set slot {_s} of {_gui} to {@gui-filler}
+			add 1 to {_s}
+			
+		set slot 10 of {_gui} to yellow wool named "&e&lWARN" with lore "&7Click to warn"
+		set slot 11 of {_gui} to orange wool named "&6&lMUTE" with lore "&7Click to mute"
+		set slot 13 of {_gui} to red wool named "&c&lKICK" with lore "&7Click to kick"
+		set slot 15 of {_gui} to red concrete named "&4&lBAN" with lore "&7Click to ban"
+		set slot 16 of {_gui} to book named "&b&lHISTORY" with lore "&7View player history"
+		
+		open {_gui} to player
+		set metadata tag "punish_target" of player to arg-1
+
+on inventory click:
+	if name of event-inventory contains "&8Punish: ":
+		cancel event
+		set {_target} to metadata tag "punish_target" of player
+		if event-slot is yellow wool: # Warn
+			close player's inventory
+			make player execute command "warn %{_target}% Breaking Rules"
+		if event-slot is orange wool: # Mute
+			set {_gui} to a new chest inventory with 3 rows named "&8Mute: &c%{_target}%"
+			set slot 10 of {_gui} to paper named "&61 Hour" with lore "&7Spam/Flooding"
+			set slot 12 of {_gui} to paper named "&61 Day" with lore "&7Toxicity/Harassment"
+			set slot 14 of {_gui} to paper named "&67 Days" with lore "&7Severe Toxicity"
+			set slot 16 of {_gui} to red wool named "&cPerm Mute" with lore "&7Advert/Spam Bot"
+			
+			open {_gui} to player
+			open {_gui} to player
+			set metadata tag "punish_target" of player to {_target}
+			
+		if event-slot is red wool: # Kick
+			close player's inventory
+			make player execute command "kick %{_target}% Breaking Rules"
+			
+		if event-slot is red concrete: # Ban
+			close player's inventory
+			make player execute command "ban %{_target}% Breaking Rules"
+			
+		if event-slot is book: # History
+			close player's inventory
+			make player execute command "history %{_target}%"
+			
+	if name of event-inventory contains "&8Mute: ":
+		cancel event
+		set {_target} to metadata tag "punish_target" of player
+		if event-slot is paper:
+			close player's inventory
+			if name of event-slot contains "1 Hour":
+				make player execute command "tempmute %{_target}% 1h Spamming"
+			if name of event-slot contains "1 Day":
+				make player execute command "tempmute %{_target}% 1d Toxicity"
+			if name of event-slot contains "7 Days":
+				make player execute command "tempmute %{_target}% 7d Severe Toxicity"
+		if event-slot is red wool:
+			close player's inventory
+			make player execute command "mute %{_target}% Advertisement"
+
+command /history <offline player>:
+	permission: {@perm-helper}
+	trigger:
+		set {_gui} to a new chest inventory with 6 rows named "&8History: &7%arg-1%"
+		set {_slot} to 0
+		loop {history::count::%uuid of arg-1%} times:
+			set {_entry} to {history::entry::%uuid of arg-1%::%loop-number%}
+			set {_data::*} to {_entry} split at "|"
+			# Format: Type | ExecutorUUID | Reason | Date
+			set {_type} to {_data::1}
+			set {_exe} to {_data::2} parsed as offline player
+			set {_reason} to {_data::3}
+			set {_date} to {_data::4}
+			
+			set {_item} to paper named "&c%{_type}%" with lore "&7Reason: &f%{_reason}%" and "&7By: &f%{_exe}%" and "&7Date: &f%{_date}%"
+			set slot {_slot} of {_gui} to {_item}
+			add 1 to {_slot}
+		open {_gui} to player
+
+on inventory click:
+	if name of event-inventory contains "&8History: ":
+		cancel event

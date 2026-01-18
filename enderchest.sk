@@ -1,0 +1,14 @@
+command /enderchest [<player>]:
+	aliases: /ec, /echest
+	permission: admin.enderchest
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			if player has permission "admin.enderchest.others":
+				open ender chest of arg-1 to player
+				send "&aOpened &f%arg-1%&a's ender chest." to player
+			else:
+				send "&cYou don't have permission to view other players' ender chests." to player
+		else:
+			open ender chest of player to player
+			send "&aOpened your ender chest." to player

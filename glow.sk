@@ -1,0 +1,58 @@
+command /glow [<text>]:
+	permission: admin.glow
+	permission message: &cYou do not have permission to use this command.
+	trigger:
+		if arg-1 is set:
+			set {_c} to arg-1
+			replace all " " with "_" in {_c}
+
+			if {_c} is "red":
+				set {_code} to "&c"
+			else if {_c} is "blue":
+				set {_code} to "&9"
+			else if {_c} is "green":
+				set {_code} to "&a"
+			else if {_c} is "yellow":
+				set {_code} to "&e"
+			else if {_c} is "aqua" or "cyan":
+				set {_code} to "&b"
+			else if {_c} is "white":
+				set {_code} to "&f"
+			else if {_c} is "black":
+				set {_code} to "&0"
+			else if {_c} is "gray":
+				set {_code} to "&7"
+			else if {_c} is "dark_red":
+				set {_code} to "&4"
+			else if {_c} is "dark_green":
+				set {_code} to "&2"
+			else if {_c} is "dark_blue":
+				set {_code} to "&1"
+			else if {_c} is "gold" or "orange":
+				set {_code} to "&6"
+			else if {_c} is "light_purple" or "pink":
+				set {_code} to "&d"
+			else if {_c} is "purple" or "dark_purple":
+				set {_code} to "&5"
+			else if {_c} is "dark_gray":
+				set {_code} to "&8"
+			else:
+				send "&cInvalid color: &f%arg-1%&c. Use /glow <color> or just /glow to toggle." to player
+				stop
+			
+			set glowing of player to true
+			execute console command "tab player %player% tagprefix %{_code}%"
+			send "&aYou are now glowing %{_code}%%arg-1%&a!" to player
+		
+		else:
+			if glowing of player is true:
+				set glowing of player to false
+				execute console command "tab player %player% tagprefix"
+				send "&cYou are no longer glowing." to player
+			else:
+				set glowing of player to true
+				execute console command "tab player %player% tagprefix &f"
+				send "&aYou are now glowing!" to player
+
+on tab complete of "/glow":
+	set tab completions for position 1 to "red", "blue", "green", "yellow", "aqua", "cyan", "white", "black", "gray", "dark_red", "dark_green", "dark_blue", "gold", "pink", "purple", "orange", "dark_gray"
