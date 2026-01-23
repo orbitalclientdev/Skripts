@@ -1,28 +1,30 @@
 options:
-	# -----------------------------------------------------
-	# CONFIGURATION
-	# -----------------------------------------------------
 	prefix: &8[&c&lGuard&8] &7
 	sc-prefix: &8[&b&lStaff&8] &f
+	ac-prefix: &8[&4&lAC&8] &7
 	
-	# Permissions
-	perm-admin: moderation.admin    # Full access
-	perm-mod: moderation.mod        # Ban/Mute/Warn
-	perm-helper: moderation.helper  # Warn/Kick/Mute(Temp)
+	perm-admin: moderation.admin
+	perm-mod: moderation.mod
+	perm-helper: moderation.helper
 	
-	# Settings
 	appeal-url: discord.gg/example
 	gui-filler: gray stained glass pane named " "
 	
-	# Colors
 	c-error: &c
 	c-success: &a
 	c-info: &7
 	c-highlight: &e
+	
+	warn-mute-threshold: 3
+	warn-ban-threshold: 5
+	warn-permban-threshold: 7
 
-# -----------------------------------------------------
-# UTILITIES & FUNCTIONS
-# -----------------------------------------------------
+	report-cooldown: 60
+	ac-flight-flags: 3
+	ac-speed-flags: 5
+	ac-reach-flags: 3
+	ac-killaura-flags: 5
+
 function formatTime(s: timespan) :: text:
 	set {_t} to "%{_s}%"
 	replace all " seconds" and " second" with "s" in {_t}
@@ -30,6 +32,15 @@ function formatTime(s: timespan) :: text:
 	replace all " hours" and " hour" with "h" in {_t}
 	replace all " days" and " day" with "d" in {_t}
 	return {_t}
+
+function canPunish(executor: player, target: offline player) :: boolean:
+	if {_target} has permission "{@perm-admin}":
+		send "{@prefix} &cYou cannot punish an administrator." to {_executor}
+		return false
+	if {_target} is {_executor}:
+		send "{@prefix} &cYou cannot punish yourself." to {_executor}
+		return false
+	return true
 
 function logHistory(p: offline player, type: text, reason: text, executor: player):
 	add 1 to {history::count::%uuid of {_p}%}
@@ -49,9 +60,6 @@ function broadcastPunishment(type: text, target: offline player, executor: playe
 			send "{@prefix} &7Reason: &f%{_reason}%" to loop-player
 			send "" to loop-player
 
-# -----------------------------------------------------
-# STAFF UTILITIES
-# -----------------------------------------------------
 command /sc <text>:
 	aliases: /staffchat
 	permission: {@perm-helper}
@@ -102,26 +110,25 @@ on chat:
 				stop
 			set {chat::last::%uuid of player%} to now
 
-# -----------------------------------------------------
-# FREEZE SYSTEM
-# -----------------------------------------------------
 command /freeze <player>:
 	aliases: /ss
 	permission: {@perm-helper}
 	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
 		if {frozen::%uuid of arg-1%} is set:
 			delete {frozen::%uuid of arg-1%}
 			send "{@prefix} &aUnfrozen &f%arg-1%&7."
+			remove slowness from arg-1
+			remove blindness from arg-1
 			send "{@prefix} &aYou have been unfrozen." to arg-1
 			reset title of arg-1
 		else:
 			set {frozen::%uuid of arg-1%} to true
 			send "{@prefix} &bFrozen &f%arg-1%&7."
+			apply slowness 255 without particles to arg-1 for 999 days
+			apply blindness 255 without particles to arg-1 for 999 days
 			send title "&b&lFROZEN" with subtitle "&7Join the Discord for support!" to arg-1 for 999 days
-
-on player move:
-	if {frozen::%uuid of player%} is set:
-		cancel event
 		
 on command:
 	if {frozen::%uuid of player%} is set:
@@ -129,22 +136,11 @@ on command:
 			cancel event
 			send "{@prefix} &cYou cannot use commands while frozen."
 
-# -----------------------------------------------------
-# PUNISHMENT SYSTEM
-# -----------------------------------------------------
-# ... (intermediate code omitted for brevity in thought process, but handled by tool) ...
-# Actually, I need to do these as separate replacement chunks or use multi_replace.
-# Since replace_file_content is single block, I will use multi_replace_file_content for the remaining edits as they are scattered.
-
-
-# -----------------------------------------------------
-# PUNISHMENT SYSTEM
-# -----------------------------------------------------
-
-# WARN
 command /warn <player> <text>:
 	permission: {@perm-helper}
 	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
 		logHistory(arg-1, "WARN", arg-2, player)
 		broadcastPunishment("WARN", arg-1, player, arg-2)
 		send "" to arg-1
@@ -153,18 +149,20 @@ command /warn <player> <text>:
 		send "" to arg-1
 		play sound "block.note_block.bass" to arg-1
 
-# KICK
 command /kick <player> <text>:
 	permission: {@perm-helper}
 	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
 		logHistory(arg-1, "KICK", arg-2, player)
 		broadcastPunishment("KICK", arg-1, player, arg-2)
 		kick arg-1 due to "&c&lKICKED%nl%%nl%&7Reason: &f%arg-2%%nl%&7Executor: &f%player%"
 
-# MUTE
 command /mute <offline player> <text>:
 	permission: {@perm-helper}
 	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
 		if {mute::%uuid of arg-1%} is set:
 			send "{@prefix} &cPlayer is already muted."
 			stop
@@ -176,8 +174,10 @@ command /mute <offline player> <text>:
 command /tempmute <offline player> <timespan> <text>:
 	permission: {@perm-helper}
 	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
 		set {mute::%uuid of arg-1%} to now
-		add arg-2 to {mute::%uuid of arg-1%} # Expiry date
+		add arg-2 to {mute::%uuid of arg-1%}
 		set {mute::reason::%uuid of arg-1%} to arg-3
 		logHistory(arg-1, "TEMPMUTE", arg-3, player)
 		broadcastPunishment("TEMPMUTE", arg-1, player, arg-3, formatTime(arg-2))
@@ -194,10 +194,10 @@ command /unmute <offline player>:
 
 on chat:
 	if {mute::%uuid of player%} is set:
-		if {mute::%uuid of player%} is true: # Perm mute
+		if {mute::%uuid of player%} is true: 
 			cancel event
 			send "&c&l✘ &7You are permanently muted for: &f%{mute::reason::%uuid of player%}%"
-		else if {mute::%uuid of player%} > now: # Temp mute
+		else if {mute::%uuid of player%} > now: 
 			cancel event
 			set {_remain} to difference between now and {mute::%uuid of player%}
 			send "&c&l✘ &7You are temporarily muted for: &f%{mute::reason::%uuid of player%}%"
@@ -206,10 +206,11 @@ on chat:
 			delete {mute::%uuid of player%}
 			delete {mute::reason::%uuid of player%}
 
-# BAN
 command /ban <offline player> <text>:
 	permission: {@perm-mod}
 	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
 		if {ban::%uuid of arg-1%} is set:
 			send "{@prefix} &cPlayer is already banned."
 			stop
@@ -222,6 +223,8 @@ command /ban <offline player> <text>:
 command /tempban <offline player> <timespan> <text>:
 	permission: {@perm-mod}
 	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
 		set {ban::%uuid of arg-1%} to now
 		add arg-2 to {ban::%uuid of arg-1%}
 		set {ban::reason::%uuid of arg-1%} to arg-3
@@ -250,12 +253,11 @@ on connect:
 			delete {ban::%uuid of player%}
 			delete {ban::reason::%uuid of player%}
 
-# -----------------------------------------------------
-# GUI SYSTEM
-# -----------------------------------------------------
 command /punish <patient:player>:
 	permission: {@perm-helper}
 	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
 		set {_gui} to a new chest inventory with 3 rows named "&8Punish: &c%arg-1%"
 		set {_s} to 0
 		loop 27 times:
@@ -275,10 +277,10 @@ on inventory click:
 	if name of event-inventory contains "&8Punish: ":
 		cancel event
 		set {_target} to metadata tag "punish_target" of player
-		if event-slot is yellow wool: # Warn
+		if event-slot is yellow wool:
 			close player's inventory
 			make player execute command "warn %{_target}% Breaking Rules"
-		if event-slot is orange wool: # Mute
+		if event-slot is orange wool:
 			set {_gui} to a new chest inventory with 3 rows named "&8Mute: &c%{_target}%"
 			set slot 10 of {_gui} to paper named "&61 Hour" with lore "&7Spam/Flooding"
 			set slot 12 of {_gui} to paper named "&61 Day" with lore "&7Toxicity/Harassment"
@@ -289,15 +291,15 @@ on inventory click:
 			open {_gui} to player
 			set metadata tag "punish_target" of player to {_target}
 			
-		if event-slot is red wool: # Kick
+		if event-slot is red wool:
 			close player's inventory
 			make player execute command "kick %{_target}% Breaking Rules"
 			
-		if event-slot is red concrete: # Ban
+		if event-slot is red concrete:
 			close player's inventory
 			make player execute command "ban %{_target}% Breaking Rules"
 			
-		if event-slot is book: # History
+		if event-slot is book:
 			close player's inventory
 			make player execute command "history %{_target}%"
 			
@@ -324,7 +326,6 @@ command /history <offline player>:
 		loop {history::count::%uuid of arg-1%} times:
 			set {_entry} to {history::entry::%uuid of arg-1%::%loop-number%}
 			set {_data::*} to {_entry} split at "|"
-			# Format: Type | ExecutorUUID | Reason | Date
 			set {_type} to {_data::1}
 			set {_exe} to {_data::2} parsed as offline player
 			set {_reason} to {_data::3}
@@ -338,3 +339,497 @@ command /history <offline player>:
 on inventory click:
 	if name of event-inventory contains "&8History: ":
 		cancel event
+
+on connect:
+	set {ip::%uuid of player%} to ip of player
+	
+	if {ipban::%ip of player%} is set:
+		kick player due to "&c&lIP BANNED%nl%%nl%&7Reason: &f%{ipban::reason::%ip of player%}%%nl%&7Appeal: &f{@appeal-url}"
+		stop
+	
+	set {_banned} to false
+	loop all offline players:
+		if {ip::%uuid of loop-value%} = ip of player:
+			if {ban::%uuid of loop-value%} is set:
+				set {_banned} to true
+				set {_bannedPlayer} to loop-value
+				
+	if {_banned} is true:
+		loop all players:
+			if loop-player has permission "{@perm-helper}":
+				send "{@prefix} &c&lALT ALERT: &f%player% &7may be an alt of banned player &f%{_bannedPlayer}%&7!" to loop-player
+
+command /ipban <offline player> <text>:
+	permission: {@perm-admin}
+	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
+		if {ip::%uuid of arg-1%} is not set:
+			send "{@prefix} &cPlayer has no stored IP. They must join first."
+			stop
+		set {_ip} to {ip::%uuid of arg-1%}
+		set {ipban::%{_ip}%} to true
+		set {ipban::reason::%{_ip}%} to arg-2
+		logHistory(arg-1, "IPBAN", arg-2, player)
+		logStaffAction("IPBAN", player, arg-1, arg-2)
+		broadcastPunishment("IPBAN", arg-1, player, arg-2, "Permanent")
+		kick arg-1 due to "&c&lIP BANNED%nl%%nl%&7Reason: &f%arg-2%%nl%&7Appeal: &f{@appeal-url}"
+
+command /unipban <offline player>:
+	permission: {@perm-admin}
+	trigger:
+		if {ip::%uuid of arg-1%} is not set:
+			send "{@prefix} &cPlayer has no stored IP."
+			stop
+		set {_ip} to {ip::%uuid of arg-1%}
+		if {ipban::%{_ip}%} is not set:
+			send "{@prefix} &cPlayer's IP is not banned."
+			stop
+		delete {ipban::%{_ip}%}
+		delete {ipban::reason::%{_ip}%}
+		send "{@prefix} &aUnbanned IP for &f%arg-1%&7."
+
+command /alts <offline player>:
+	permission: {@perm-mod}
+	trigger:
+		if {ip::%uuid of arg-1%} is not set:
+			send "{@prefix} &cPlayer has no stored IP."
+			stop
+		set {_ip} to {ip::%uuid of arg-1%}
+		send "{@prefix} &eAlts for &f%arg-1%&7:"
+		set {_found} to false
+		loop all offline players:
+			if loop-value is not arg-1:
+				if {ip::%uuid of loop-value%} = {_ip}:
+					set {_status} to "&aOnline"
+					if loop-value is not online:
+						set {_status} to "&7Offline"
+					if {ban::%uuid of loop-value%} is set:
+						set {_status} to "&cBanned"
+					send "&8 • &f%loop-value% &7(%{_status}&7)"
+					set {_found} to true
+		if {_found} is false:
+			send "&8 • &7No alts found."
+
+function addWarnPoints(p: offline player, points: number, executor: player):
+	add {_points} to {warnpoints::%uuid of {_p}%}
+	set {_total} to {warnpoints::%uuid of {_p}%}
+	
+	if {_total} >= {@warn-permban-threshold}:
+		if {ban::%uuid of {_p}%} is not set:
+			set {ban::%uuid of {_p}%} to true
+			set {ban::reason::%uuid of {_p}%} to "Exceeded warning threshold"
+			logHistory({_p}, "AUTO-BAN", "Exceeded %{_total}% warning points", {_executor})
+			logStaffAction("AUTO-BAN", {_executor}, {_p}, "Exceeded warning threshold")
+			broadcastPunishment("AUTO-BAN", {_p}, {_executor}, "Exceeded warning threshold", "Permanent")
+			kick {_p} due to "&c&lPERMANENTLY BANNED%nl%%nl%&7Reason: &fExceeded warning threshold%nl%&7Appeal: &f{@appeal-url}"
+	else if {_total} >= {@warn-ban-threshold}:
+		if {ban::%uuid of {_p}%} is not set:
+			set {ban::%uuid of {_p}%} to now
+			add 1 day to {ban::%uuid of {_p}%}
+			set {ban::reason::%uuid of {_p}%} to "Warning threshold reached"
+			logHistory({_p}, "AUTO-TEMPBAN", "Reached %{_total}% warning points", {_executor})
+			logStaffAction("AUTO-TEMPBAN", {_executor}, {_p}, "Warning threshold reached")
+			broadcastPunishment("AUTO-TEMPBAN", {_p}, {_executor}, "Warning threshold reached", "1d")
+			kick {_p} due to "&c&lTEMPORARILY BANNED%nl%%nl%&7Reason: &fWarning threshold reached%nl%&7Expires in: &f1 day"
+	else if {_total} >= {@warn-mute-threshold}:
+		if {mute::%uuid of {_p}%} is not set:
+			set {mute::%uuid of {_p}%} to now
+			add 1 hour to {mute::%uuid of {_p}%}
+			set {mute::reason::%uuid of {_p}%} to "Warning threshold reached"
+			logHistory({_p}, "AUTO-TEMPMUTE", "Reached %{_total}% warning points", {_executor})
+			logStaffAction("AUTO-TEMPMUTE", {_executor}, {_p}, "Warning threshold reached")
+			broadcastPunishment("AUTO-TEMPMUTE", {_p}, {_executor}, "Warning threshold reached", "1h")
+
+command /warn <offline player> <text> <text>:
+	permission: {@perm-helper}
+	usage: /warn <player> <minor|moderate|severe> <reason>
+	trigger:
+		if canPunish(player, arg-1) is false:
+			stop
+		set {_points} to 1
+		if arg-2 is "moderate":
+			set {_points} to 2
+		else if arg-2 is "severe":
+			set {_points} to 3
+		else if arg-2 is not "minor":
+			send "{@prefix} &cUsage: /warn <player> <minor|moderate|severe> <reason>"
+			stop
+		
+		logHistory(arg-1, "WARN", "%arg-3% (%arg-2%, +%{_points}%pts)", player)
+		logStaffAction("WARN", player, arg-1, "%arg-3% (%{_points}% points)")
+		broadcastPunishment("WARN", arg-1, player, arg-3)
+		addWarnPoints(arg-1, {_points}, player)
+		
+		send "" to arg-1
+		send "&c&l⚠ YOU HAVE BEEN WARNED" to arg-1
+		send "&7Reason: &f%arg-3%" to arg-1
+		send "&7Points: &c+%{_points}% &8(&f%{warnpoints::%uuid of arg-1%}%&8 total)" to arg-1
+		send "" to arg-1
+		play sound "block.note_block.bass" to arg-1
+
+on tab complete of "/warn":
+	set tab completions for position 2 to "minor", "moderate", "severe"
+
+command /warnpoints <offline player>:
+	permission: {@perm-helper}
+	trigger:
+		set {_pts} to {warnpoints::%uuid of arg-1%} ? 0
+		send "{@prefix} &f%arg-1% &7has &e%{_pts}% &7warning points."
+		send "&8 • &73 points = Auto mute (1h)"
+		send "&8 • &75 points = Auto ban (1d)"
+		send "&8 • &77 points = Permanent ban"
+
+command /resetpoints <offline player>:
+	permission: {@perm-mod}
+	trigger:
+		delete {warnpoints::%uuid of arg-1%}
+		send "{@prefix} &aReset warning points for &f%arg-1%&7."
+		logStaffAction("RESET-POINTS", player, arg-1, "Reset warning points")
+
+command /report <player> <text>:
+	cooldown: {@report-cooldown} seconds
+	cooldown message: {@prefix} &cPlease wait before reporting again.
+	trigger:
+		if arg-1 = player:
+			send "{@prefix} &cYou cannot report yourself."
+			stop
+		add 1 to {reports::count}
+		set {_id} to {reports::count}
+		set {reports::%{_id}%::reporter} to player
+		set {reports::%{_id}%::target} to arg-1
+		set {reports::%{_id}%::reason} to arg-2
+		set {reports::%{_id}%::time} to now
+		set {reports::%{_id}%::status} to "pending"
+		
+		send "{@prefix} &aReport submitted. Staff will review it shortly."
+		
+		loop all players:
+			if loop-player has permission "{@perm-helper}":
+				send "" to loop-player
+				send "{@prefix} &c&lNEW REPORT &8(#%{_id}%)" to loop-player
+				send "&8 • &7Reporter: &f%player%" to loop-player
+				send "&8 • &7Target: &f%arg-1%" to loop-player
+				send "&8 • &7Reason: &f%arg-2%" to loop-player
+				send "" to loop-player
+
+command /reports:
+	permission: {@perm-helper}
+	trigger:
+		set {_gui} to a new chest inventory with 6 rows named "&8Pending Reports"
+		set {_slot} to 0
+		loop {reports::count} times:
+			if {reports::%loop-number%::status} is "pending":
+				set {_reporter} to {reports::%loop-number%::reporter}
+				set {_target} to {reports::%loop-number%::target}
+				set {_reason} to {reports::%loop-number%::reason}
+				set {_time} to {reports::%loop-number%::time}
+				set {_item} to paper named "&c&lReport #%loop-number%" with lore "" and "&7Reporter: &f%{_reporter}%" and "&7Target: &f%{_target}%" and "&7Reason: &f%{_reason}%" and "&7Time: &f%{_time}%" and "" and "&aLeft-click: Accept" and "&cRight-click: Deny"
+				set slot {_slot} of {_gui} to {_item}
+				add 1 to {_slot}
+		if {_slot} = 0:
+			set slot 22 of {_gui} to lime wool named "&aNo pending reports!"
+		open {_gui} to player
+
+on inventory click:
+	if name of event-inventory is "&8Pending Reports":
+		cancel event
+		if event-slot is paper:
+			set {_name} to name of event-slot
+			set {_id} to {_name}
+			replace all "&c&lReport #" with "" in {_id}
+			set {_id} to {_id} parsed as number
+			
+			if click type is left mouse button:
+				set {reports::%{_id}%::status} to "accepted"
+				set {reports::%{_id}%::handler} to player
+				send "{@prefix} &aReport #%{_id}% accepted."
+				logStaffAction("REPORT-ACCEPT", player, {reports::%{_id}%::target}, "Accepted report #%{_id}%")
+				close player's inventory
+				make player execute command "punish %{reports::%{_id}%::target}%"
+			else if click type is right mouse button:
+				set {reports::%{_id}%::status} to "denied"
+				set {reports::%{_id}%::handler} to player
+				send "{@prefix} &cReport #%{_id}% denied."
+				logStaffAction("REPORT-DENY", player, {reports::%{_id}%::target}, "Denied report #%{_id}%")
+				close player's inventory
+
+function logStaffAction(action: text, staff: player, target: offline player, reason: text):
+	add 1 to {stafflog::count}
+	set {_id} to {stafflog::count}
+	set {stafflog::%{_id}%} to "%{_action}%|%uuid of {_staff}%|%uuid of {_target}%|%{_reason}%|%now%"
+
+on join:
+	if player has permission "{@perm-helper}":
+		set {stafftime::%uuid of player%::session} to now
+
+on quit:
+	if player has permission "{@perm-helper}":
+		if {stafftime::%uuid of player%::session} is set:
+			set {_duration} to difference between {stafftime::%uuid of player%::session} and now
+			add {_duration} to {stafftime::%uuid of player%::total}
+			delete {stafftime::%uuid of player%::session}
+
+command /stafflog [<number=1>]:
+	permission: {@perm-admin}
+	trigger:
+		set {_page} to arg-1
+		set {_start} to ({stafflog::count} ? 0) - (({_page} - 1) * 10)
+		set {_end} to {_start} - 9
+		if {_end} < 1:
+			set {_end} to 1
+		
+		send "&8&m                                          "
+		send "&c&lStaff Log &8(Page %{_page}%)"
+		send ""
+		
+		loop integers from {_start} to {_end}:
+			if {stafflog::%loop-value%} is set:
+				set {_entry} to {stafflog::%loop-value%}
+				set {_data::*} to {_entry} split at "|"
+				set {_action} to {_data::1}
+				set {_staff} to {_data::2} parsed as offline player
+				set {_target} to {_data::3} parsed as offline player
+				set {_reason} to {_data::4}
+				set {_time} to {_data::5}
+				send "&8[&7%{_time}%&8] &c%{_action}% &8- &f%{_staff}% &7→ &f%{_target}%"
+				send "&8  Reason: &7%{_reason}%"
+		
+		send ""
+		send "&8&m                                          "
+
+command /staffstats [<offline player>]:
+	permission: {@perm-admin}
+	trigger:
+		set {_target} to arg-1 ? player
+		set {_total} to {stafftime::%uuid of {_target}%::total} ? 0 seconds
+		
+		send "&8&m                                          "
+		send "&c&lStaff Stats: &f%{_target}%"
+		send ""
+		send "&8 • &7Total Online Time: &f%formatTime({_total})%"
+		
+		set {_warns} to 0
+		set {_mutes} to 0
+		set {_bans} to 0
+		set {_kicks} to 0
+		loop {stafflog::count} times:
+			if {stafflog::%loop-number%} is set:
+				set {_entry} to {stafflog::%loop-number%}
+				if {_entry} contains "%uuid of {_target}%":
+					if {_entry} starts with "WARN":
+						add 1 to {_warns}
+					else if {_entry} contains "MUTE":
+						add 1 to {_mutes}
+					else if {_entry} contains "BAN":
+						add 1 to {_bans}
+					else if {_entry} starts with "KICK":
+						add 1 to {_kicks}
+		
+		send "&8 • &7Warns: &e%{_warns}%"
+		send "&8 • &7Mutes: &6%{_mutes}%"
+		send "&8 • &7Kicks: &c%{_kicks}%"
+		send "&8 • &7Bans: &4%{_bans}%"
+		send ""
+		send "&8&m                                          "
+
+command /clearlog:
+	permission: {@perm-admin}
+	trigger:
+		delete {stafflog::*}
+		set {stafflog::count} to 0
+		send "{@prefix} &aStaff log cleared."
+
+on join:
+	delete {ac::flags::%uuid of player%::*}
+
+command /acalerts:
+	permission: {@perm-helper}
+	trigger:
+		if {ac::alerts::%uuid of player%} is set:
+			delete {ac::alerts::%uuid of player%}
+			send "{@ac-prefix} &cAnticheat alerts disabled."
+		else:
+			set {ac::alerts::%uuid of player%} to true
+			send "{@ac-prefix} &aAnticheat alerts enabled."
+
+command /acstatus <player>:
+	permission: {@perm-mod}
+	trigger:
+		send "{@ac-prefix} &eFlags for &f%arg-1%&7:"
+		send "&8 • &7Flight: &f%{ac::flags::%uuid of arg-1%::flight} ? 0%"
+		send "&8 • &7Speed: &f%{ac::flags::%uuid of arg-1%::speed} ? 0%"
+		send "&8 • &7Reach: &f%{ac::flags::%uuid of arg-1%::reach} ? 0%"
+		send "&8 • &7KillAura: &f%{ac::flags::%uuid of arg-1%::killaura} ? 0%"
+
+function flagPlayer(p: player, type: text):
+	add 1 to {ac::flags::%uuid of {_p}%::%{_type}%}
+	set {_flags} to {ac::flags::%uuid of {_p}%::%{_type}%}
+	
+	set {_threshold} to {@ac-flight-flags}
+	if {_type} is "speed":
+		set {_threshold} to {@ac-speed-flags}
+	else if {_type} is "reach":
+		set {_threshold} to {@ac-reach-flags}
+	else if {_type} is "killaura":
+		set {_threshold} to {@ac-killaura-flags}
+	
+	if {_flags} >= {_threshold}:
+		loop all players:
+			if {ac::alerts::%uuid of loop-player%} is set:
+				send "{@ac-prefix} &c&lALERT: &f%{_p}% &7failed &c%{_type}% &8(&f%{_flags}% flags&8)" to loop-player
+
+every 5 ticks:
+	loop all players:
+		if gamemode of loop-player is survival or adventure:
+			if loop-player's flight mode is false:
+				if loop-player is not on ground:
+					if loop-player is not swimming:
+						if loop-player is not in water:
+							if {ac::airtime::%uuid of loop-player%} is not set:
+								set {ac::airtime::%uuid of loop-player%} to 0
+							add 1 to {ac::airtime::%uuid of loop-player%}
+							if {ac::airtime::%uuid of loop-player%} > 20:
+								flagPlayer(loop-player, "flight")
+								delete {ac::airtime::%uuid of loop-player%}
+						else:
+							delete {ac::airtime::%uuid of loop-player%}
+					else:
+						delete {ac::airtime::%uuid of loop-player%}
+				else:
+					delete {ac::airtime::%uuid of loop-player%}
+
+every 10 ticks:
+	loop all players:
+		if gamemode of loop-player is survival or adventure:
+			if {ac::lastloc::%uuid of loop-player%} is set:
+				set {_dist} to distance between loop-player's location and {ac::lastloc::%uuid of loop-player%}
+				set {_yDiff} to y-coordinate of loop-player's location - y-coordinate of {ac::lastloc::%uuid of loop-player%}
+				set {_horizontalDist} to sqrt(({_dist}^2) - ({_yDiff}^2))
+				if {_horizontalDist} > 8:
+					if loop-player is not flying:
+						if loop-player does not have speed:
+							flagPlayer(loop-player, "speed")
+			set {ac::lastloc::%uuid of loop-player%} to loop-player's location
+
+on damage:
+	if attacker is a player:
+		if victim is a living entity:
+			if gamemode of attacker is survival or adventure:
+				set {_dist} to distance between attacker's location and victim's location
+				if {_dist} > 4.5:
+					flagPlayer(attacker, "reach")
+
+on damage:
+	if attacker is a player:
+		if victim is a living entity:
+			if gamemode of attacker is survival or adventure:
+				set {_now} to now
+				if {ac::lasthit::%uuid of attacker%} is set:
+					set {_diff} to difference between {ac::lasthit::%uuid of attacker%} and {_now}
+					if {_diff} < 2 ticks:
+						add 1 to {ac::hitspeed::%uuid of attacker%}
+						if {ac::hitspeed::%uuid of attacker%} > 5:
+							flagPlayer(attacker, "killaura")
+							set {ac::hitspeed::%uuid of attacker%} to 0
+					else:
+						set {ac::hitspeed::%uuid of attacker%} to 0
+				set {ac::lasthit::%uuid of attacker%} to {_now}
+
+command /acpunish <player>:
+	permission: {@perm-mod}
+	trigger:
+		set {_total} to 0
+		add ({ac::flags::%uuid of arg-1%::flight} ? 0) to {_total}
+		add ({ac::flags::%uuid of arg-1%::speed} ? 0) to {_total}
+		add ({ac::flags::%uuid of arg-1%::reach} ? 0) to {_total}
+		add ({ac::flags::%uuid of arg-1%::killaura} ? 0) to {_total}
+		
+		if {_total} < 5:
+			send "{@ac-prefix} &cNot enough flags to punish (%{_total}%/5 minimum)."
+			stop
+		
+		delete {ac::flags::%uuid of arg-1%::*}
+		logHistory(arg-1, "AC-BAN", "Anticheat detection (%{_total}% flags)", player)
+		logStaffAction("AC-BAN", player, arg-1, "Anticheat detection")
+		set {ban::%uuid of arg-1%} to now
+		add 7 days to {ban::%uuid of arg-1%}
+		set {ban::reason::%uuid of arg-1%} to "Unfair Advantage"
+		broadcastPunishment("AC-BAN", arg-1, player, "Unfair Advantage", "7d")
+		kick arg-1 due to "&c&lBANNED FOR CHEATING%nl%%nl%&7Reason: &fUnfair Advantage%nl%&7Duration: &f7 days%nl%&7Appeal: &f{@appeal-url}"
+
+# -------------------------
+# NEW FEATURES
+# -------------------------
+
+# CHAT FILTER
+command /filter <text> <text>:
+	permission: {@perm-admin}
+	trigger:
+		if arg-1 is "add":
+			if {filter::words::*} contains arg-2:
+				send "{@prefix} &cWord already in filter."
+			else:
+				add arg-2 to {filter::words::*}
+				send "{@prefix} &aAdded &f%arg-2% &ato filter."
+		else if arg-1 is "remove":
+			if {filter::words::*} contains arg-2:
+				remove arg-2 from {filter::words::*}
+				send "{@prefix} &aRemoved &f%arg-2% &afrom filter."
+			else:
+				send "{@prefix} &cWord not found in filter."
+		else if arg-1 is "list":
+			send "{@prefix} &eFiltered Words: &f%{filter::words::*}%"
+		else:
+			send "{@prefix} &cUsage: /filter <add|remove|list> <word>"
+
+on chat:
+	if {filter::words::*} is set:
+		loop {filter::words::*}:
+			if message contains loop-value:
+				replace all loop-value with "****" in message
+
+# STAFF NOTES
+command /note <offline player> <text>:
+	permission: {@perm-helper}
+	trigger:
+		add 1 to {notes::count::%uuid of arg-1%}
+		set {_id} to {notes::count::%uuid of arg-1%}
+		set {notes::entry::%uuid of arg-1%::%{_id}%} to "%player%|%arg-2%|%now%"
+		send "{@prefix} &aNote added for &f%arg-1%&7."
+
+command /notes <offline player>:
+	permission: {@perm-helper}
+	trigger:
+		send "&8&m                                          "
+		send "&e&lNotes: &f%arg-1%"
+		send ""
+		set {_count} to {notes::count::%uuid of arg-1%} ? 0
+		if {_count} is 0:
+			send "&7No notes found."
+		else:
+			loop {_count} times:
+				set {_entry} to {notes::entry::%uuid of arg-1%::%loop-number%}
+				set {_data::*} to {_entry} split at "|"
+				send "&8[&f%loop-number%&8] &7From &f%{_data::1}% &7(%{_data::3}%):"
+				send "   &e%{_data::2}%"
+		send ""
+		send "&8&m                                          "
+
+# SERVER LOCKDOWN
+command /lockdown:
+	permission: {@perm-admin}
+	trigger:
+		if {lockdown} is not set:
+			set {lockdown} to true
+			broadcast "{@prefix} &c&lSERVER LOCKDOWN ENABLED!"
+			broadcast "{@prefix} &7Only staff members can join."
+		else:
+			delete {lockdown}
+			broadcast "{@prefix} &a&lSERVER LOCKDOWN DISABLED!"
+			broadcast "{@prefix} &7Everyone can join now."
+
+on connect:
+	if {lockdown} is set:
+		if player does not have permission "{@perm-helper}":
+			kick player due to "&c&lSERVER LOCKDOWN%nl%%nl%&7The server is currently in lockdown mode.%nl%&7Please try again later."
